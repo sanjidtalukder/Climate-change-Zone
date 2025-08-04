@@ -1,0 +1,166 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TerraForge: Climate Crisis Game</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #eafaf1;
+    }
+    h1 {
+      background: #006d77;
+      color: white;
+      padding: 1rem;
+      margin: 0;
+      text-align: center;
+      font-size: 1.8rem;
+    }
+    #map {
+      height: 60vh;
+      width: 100%;
+    }
+    .info-box {
+      padding: 1rem;
+      background: #ffffff;
+      border-top: 3px solid #006d77;
+    }
+    .zone-actions button {
+      margin: 0.25rem;
+      padding: 0.5rem 1rem;
+      background: #83c5be;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+    .zone-actions button:hover {
+      background: #006d77;
+      color: white;
+    }
+    .score {
+      padding: 1rem;
+      font-size: 1.2rem;
+      text-align: center;
+      background: #edf6f9;
+      font-weight: bold;
+    }
+    .bar {
+      height: 10px;
+      border-radius: 5px;
+      background: #ccc;
+      margin-bottom: 6px;
+      overflow: hidden;
+    }
+    .bar-inner {
+      height: 100%;
+      transition: width 0.5s ease;
+    }
+    .custom-marker {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌍 TerraForge: Reclaim the Broken Earth</h1>
+  <div id="map"></div>
+  <div class="info-box" id="infoBox">Click a zone marker to see data and take action.</div>
+  <div class="score" id="score">Zones healed: 0 / 3</div>  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>  <script>
+    const zones = {
+      Dhaka: {
+        coords: [23.8103, 90.4125],
+        pollution: 85,
+        floodRisk: 40,
+        forestLoss: 15
+      },
+      Sylhet: {
+        coords: [24.8949, 91.8687],
+        pollution: 30,
+        floodRisk: 70,
+        forestLoss: 25
+      },
+      Sundarbans: {
+        coords: [21.9497, 89.1833],
+        pollution: 15,
+        floodRisk: 60,
+        forestLoss: 50
+      }
+    };
+
+    const healingThreshold = { pollution: 30, floodRisk: 30, forestLoss: 20 };
+
+    const map = L.map('map').setView([23.6850, 90.3563], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    function updateScore() {
+      let healed = 0;
+      for (let zone in zones) {
+        const z = zones[zone];
+        if (z.pollution <= healingThreshold.pollution &&
+            z.floodRisk <= healingThreshold.floodRisk &&
+            z.forestLoss <= healingThreshold.forestLoss) {
+          healed++;
+        }
+      }
+      document.getElementById("score").innerText = `Zones healed: ${healed} / ${Object.keys(zones).length}`;
+    }
+
+    function showBar(label, value, color) {
+      return `
+        <p>${label}: ${value}</p>
+        <div class="bar"><div class="bar-inner" style="width: ${value}%; background: ${color};"></div></div>
+      `;
+    }
+
+    function showZoneInfo(name) {
+      const data = zones[name];
+      document.getElementById("infoBox").innerHTML = `
+        <h3>${name}</h3>
+        ${showBar('Pollution (VIIRS)', data.pollution, '#e63946')}
+        ${showBar('Flood Risk (SMAP)', data.floodRisk, '#457b9d')}
+        ${showBar('Forest Loss (FIRMS)', data.forestLoss, '#2a9d8f')}
+        <div class="zone-actions">
+          <button onclick="performAction('${name}', 'trees')">🌳 Plant Trees</button>
+          <button onclick="performAction('${name}', 'cleanAir')">💨 Clean Air</button>
+          <button onclick="performAction('${name}', 'floodControl')">🌊 Control Flood</button>
+        </div>
+      `;
+    }
+
+    function performAction(zone, action) {
+      const data = zones[zone];
+      if (action === 'trees') data.forestLoss = Math.max(0, data.forestLoss - 15);
+      if (action === 'cleanAir') data.pollution = Math.max(0, data.pollution - 20);
+      if (action === 'floodControl') data.floodRisk = Math.max(0, data.floodRisk - 20);
+      showZoneInfo(zone);
+      updateScore();
+    }
+
+    for (let name in zones) {
+      const data = zones[name];
+      const danger = data.pollution + data.floodRisk + data.forestLoss;
+      let color = 'green';
+      if (danger > 180) color = 'red';
+      else if (danger > 120) color = 'orange';
+
+      const icon = L.divIcon({
+        className: 'custom-marker',
+        html: `<div style="background:${color};width:18px;height:18px;border-radius:50%;border:2px solid white;"></div>`,
+        iconSize: [18, 18]
+      });
+
+      const marker = L.marker(data.coords, { icon }).addTo(map);
+      marker.bindPopup(`<b>${name}</b><br>Click for details.`);
+      marker.on('click', () => showZoneInfo(name));
+    }
+
+    updateScore();
+  </script></body>
+</html>
